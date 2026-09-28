@@ -26,7 +26,7 @@ class SessionManager extends ChangeNotifier {
   String _language = 'en';
   String _apiUrl = VetAppConstants.defaultApiUrl;
 
-  bool get isLoggedIn => _isLoggedIn;
+  bool get isLoggedIn => _isLoggedIn && _token != null && _token!.isNotEmpty;
   String? get token => _token;
   String get vetId => _vetId;
   String get vetName => _vetName;
@@ -60,8 +60,9 @@ class SessionManager extends ChangeNotifier {
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _isLoggedIn = prefs.getBool('vet_is_logged_in') ?? false;
       _token = prefs.getString('vet_token');
+      final bool loggedInFlag = prefs.getBool('vet_is_logged_in') ?? false;
+      _isLoggedIn = loggedInFlag && (_token != null && _token!.isNotEmpty);
       _vetId = prefs.getString('vet_id') ?? _vetId;
       _vetName = prefs.getString('vet_name') ?? _vetName;
       _profilePhotoUrl = prefs.getString('vet_profile_photo');
@@ -185,7 +186,20 @@ class SessionManager extends ChangeNotifier {
     _token = null;
     VetApiService().setToken('');
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.remove('vet_is_logged_in');
+    await prefs.remove('vet_token');
+    await prefs.remove('vet_id');
+    await prefs.remove('vet_name');
+    await prefs.remove('vet_profile_photo');
+    await prefs.remove('vet_designation');
+    await prefs.remove('vet_email');
+    await prefs.remove('vet_phone');
+    await prefs.remove('vet_specialization');
+    await prefs.remove('vet_license');
+    await prefs.remove('vet_clinic');
+    await prefs.remove('vet_district');
+    await prefs.remove('vet_available');
+    await prefs.remove('vet_emergency_duty');
     notifyListeners();
   }
 }

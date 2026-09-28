@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/constants.dart';
 import '../services/session_manager.dart';
 import 'dashboard_view.dart';
@@ -37,38 +38,51 @@ class _VetShellState extends State<VetShell> {
       ProfileView(onLogout: widget.onLogout),
     ];
 
-    if (isWide) {
-      return Scaffold(
-        backgroundColor: VetAppConstants.background,
-        body: SafeArea(
-          child: Row(
-            children: [
-              _buildNavigationRail(context, session),
-              const VerticalDivider(width: 1, color: VetAppConstants.borderLight),
-              Expanded(
-                child: IndexedStack(
-                  index: _currentTab,
-                  children: views,
-                ),
+    final mainScaffold = isWide
+        ? Scaffold(
+            backgroundColor: VetAppConstants.background,
+            body: SafeArea(
+              child: Row(
+                children: [
+                  _buildNavigationRail(context, session),
+                  const VerticalDivider(width: 1, color: VetAppConstants.borderLight),
+                  Expanded(
+                    child: IndexedStack(
+                      index: _currentTab,
+                      children: views,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-      );
-    }
+            ),
+          )
+        : Scaffold(
+            backgroundColor: VetAppConstants.background,
+            extendBody: true,
+            body: SafeArea(
+              bottom: false,
+              child: IndexedStack(
+                index: _currentTab,
+                children: views,
+              ),
+            ),
+            bottomNavigationBar: _buildBottomBar(context),
+          );
 
-    // Mobile Phone Layout with Floating Mockup Bottom Navigation Bar
-    return Scaffold(
-      backgroundColor: VetAppConstants.background,
-      extendBody: true,
-      body: SafeArea(
-        bottom: false,
-        child: IndexedStack(
-          index: _currentTab,
-          children: views,
-        ),
-      ),
-      bottomNavigationBar: _buildBottomBar(context),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_currentTab != 0) {
+          setState(() => _currentTab = 0);
+          return;
+        }
+        final shouldExit = await _showExitConfirmationDialog(context);
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: mainScaffold,
     );
   }
 
@@ -335,6 +349,50 @@ class _VetShellState extends State<VetShell> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<bool?> _showExitConfirmationDialog(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.exit_to_app, color: VetAppConstants.primaryNavy),
+            SizedBox(width: 8),
+            Text(
+              'Exit Pashu Vet',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: VetAppConstants.primaryNavy,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to exit the application?',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VetAppConstants.primaryNavy,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Exit'),
+          ),
+        ],
       ),
     );
   }

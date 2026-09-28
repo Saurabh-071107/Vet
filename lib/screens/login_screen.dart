@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/constants.dart';
 import '../services/session_manager.dart';
 import '../services/vet_api_service.dart';
@@ -76,11 +77,65 @@ class _VetLoginScreenState extends State<VetLoginScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= VetAppConstants.tabletBreakpoint;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        top: false,
-        child: isWide ? _buildWideLayout(context) : _buildMobileLayout(context),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await _showExitConfirmationDialog(context);
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          top: false,
+          child: isWide ? _buildWideLayout(context) : _buildMobileLayout(context),
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _showExitConfirmationDialog(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.exit_to_app, color: VetAppConstants.primaryNavy),
+            SizedBox(width: 8),
+            Text(
+              'Exit Pashu Vet',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: VetAppConstants.primaryNavy,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to exit the application?',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: VetAppConstants.primaryNavy,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Exit'),
+          ),
+        ],
       ),
     );
   }
