@@ -31,7 +31,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   bool _isMicMuted = false;
   bool _isVideoOff = false;
   final bool _isFrontCamera = true;
-  int _callDurationSeconds = 765; // Initialized around 12:45 to match mockup
+  int _callDurationSeconds = 0; // Starts at 00:00 for live session
   Timer? _callTimer;
   Timer? _streamSyncTimer;
 
@@ -55,17 +55,14 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
     super.initState();
     _notesController.text = widget.caseItem.vetNotes ?? '';
 
-    // Initialize sample prescription
-    _prescriptions.add({
-      'name': 'Ceftiofur Sodium',
-      'dosage': '1 g IM once daily',
-      'withdrawal': 4,
-    });
-    _prescriptions.add({
-      'name': 'Meloxicam Injection',
-      'dosage': '15 ml IM once daily',
-      'withdrawal': 5,
-    });
+    // Initialize case prescriptions if already prescribed in backend
+    for (final p in widget.caseItem.prescriptions) {
+      _prescriptions.add({
+        'name': p.medicineName,
+        'dosage': p.dosage,
+        'withdrawal': p.withdrawalPeriodDays ?? 0,
+      });
+    }
 
     // Start Call Timer
     _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -632,7 +629,9 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   Widget _buildPatientStatusRow() {
     final patientName = widget.caseItem.farmerName?.isNotEmpty == true
         ? widget.caseItem.farmerName!
-        : 'Eleanor Vance';
+        : (widget.caseItem.animalName?.isNotEmpty == true
+            ? widget.caseItem.animalName!
+            : 'Livestock Patient');
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -711,10 +710,13 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
           Row(
             children: [
               Expanded(
-                child: _vitalItem('AGE', '68 Years'),
+                child: _vitalItem(
+                  'AGE',
+                  widget.caseItem.ageYears != null ? '${widget.caseItem.ageYears} Years' : widget.caseItem.speciesAndAge,
+                ),
               ),
               Expanded(
-                child: _vitalItem('GENDER', 'Female'),
+                child: _vitalItem('SPECIES / BREED', widget.caseItem.species ?? 'Bovine'),
               ),
             ],
           ),
@@ -722,10 +724,10 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
           Row(
             children: [
               Expanded(
-                child: _vitalItem('BLOOD GROUP', 'O Positive'),
+                child: _vitalItem('LOCATION', widget.caseItem.villageText),
               ),
               Expanded(
-                child: _vitalItem('WEIGHT / HEIGHT', "145 lbs / 5'4\""),
+                child: _vitalItem('SEVERITY / RISK', '${widget.caseItem.aiSeverity.toUpperCase()} (${widget.caseItem.aiRiskScore}%)'),
               ),
             ],
           ),
@@ -792,7 +794,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'CONDITIONS',
+            'DIAGNOSIS & SYMPTOMS',
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
@@ -801,7 +803,9 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -809,28 +813,43 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                   color: const Color(0xFFFEE2E2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Hypertension',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFBE123C)),
+                child: Text(
+                  widget.caseItem.aiPredictedDisease.isNotEmpty
+                      ? widget.caseItem.aiPredictedDisease
+                      : 'General Examination',
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFBE123C)),
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0F2EF),
-                  borderRadius: BorderRadius.circular(12),
+              if (widget.caseItem.symptoms.isNotEmpty)
+                for (final sym in widget.caseItem.symptoms)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0F2EF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      sym,
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: VetAppConstants.primaryTeal),
+                    ),
+                  )
+              else if (widget.caseItem.description.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0F2EF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    widget.caseItem.description,
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: VetAppConstants.primaryTeal),
+                  ),
                 ),
-                child: const Text(
-                  'Osteoarthritis',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: VetAppConstants.primaryTeal),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
           const Text(
-            'ALLERGIES',
+            'OUTBREAK SURVEILLANCE',
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
@@ -842,17 +861,25 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
+              color: widget.caseItem.suspectedOutbreak ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFB45309)),
-                SizedBox(width: 4),
+                Icon(
+                  widget.caseItem.suspectedOutbreak ? Icons.warning_amber_rounded : Icons.shield_outlined,
+                  size: 14,
+                  color: widget.caseItem.suspectedOutbreak ? const Color(0xFFBE123C) : const Color(0xFFB45309),
+                ),
+                const SizedBox(width: 4),
                 Text(
-                  'Penicillin',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFB45309)),
+                  widget.caseItem.suspectedOutbreak ? 'Suspected Outbreak Cluster' : 'Standard Routine Surveillance',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: widget.caseItem.suspectedOutbreak ? const Color(0xFFBE123C) : const Color(0xFFB45309),
+                  ),
                 ),
               ],
             ),
@@ -1041,68 +1068,68 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          // 2 Report cards side by side
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.description_outlined, size: 20, color: Color(0xFF0D9488)),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Blood Panel',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                            ),
-                            Text('Oct 12, 2023', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
-                          ],
-                        ),
+          if (widget.caseItem.recommendedTests.isNotEmpty)
+            Row(
+              children: [
+                for (final test in widget.caseItem.recommendedTests.take(2))
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.document_scanner_outlined, size: 20, color: Color(0xFF0D9488)),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Chest X-Ray',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.description_outlined, size: 20, color: Color(0xFF0D9488)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  test.testName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                                ),
+                                Text(
+                                  test.status,
+                                  style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                                ),
+                              ],
                             ),
-                            Text('Sep 05, 2023', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+              ],
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-            ],
-          ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Color(0xFF94A3B8)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'No diagnostic lab tests ordered yet for this patient.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
           // Upload Document Button
           InkWell(

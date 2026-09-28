@@ -26,20 +26,16 @@ class _DashboardViewState extends State<DashboardView> {
   Timer? _pollTimer;
 
   bool _isLoading = true;
-  Map<String, dynamic> _stats = {
-    'totalPatientsAttended': 12,
-    'followupsToday': 3,
-    'urgentReporting': 3,
-    'outbreakAlerts': 5,
-  };
+  Map<String, dynamic> _stats = {};
   List<Map<String, dynamic>> _queueItems = [];
+  List<Map<String, dynamic>> _appointments = [];
 
   @override
   void initState() {
     super.initState();
     _session.addListener(_onSessionChanged);
     _loadDashboardData();
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (mounted) _loadDashboardData(isBackground: true);
     });
   }
@@ -61,12 +57,14 @@ class _DashboardViewState extends State<DashboardView> {
       final results = await Future.wait([
         _apiService.getDashboardStats(),
         _apiService.getVetQueue(),
+        _apiService.getAppointments(),
       ]);
 
       if (mounted) {
         setState(() {
           _stats = results[0] as Map<String, dynamic>;
           _queueItems = results[1] as List<Map<String, dynamic>>;
+          _appointments = results[2] as List<Map<String, dynamic>>;
           _isLoading = false;
         });
       }
@@ -77,7 +75,7 @@ class _DashboardViewState extends State<DashboardView> {
 
   void _startConsultation(Map<String, dynamic> item) {
     final caseModel = VetCaseModel.fromAppointment(item);
-    final appointmentId = item['_id']?.toString() ?? item['id']?.toString() ?? 'apt_mock_1';
+    final appointmentId = item['_id']?.toString() ?? item['id']?.toString() ?? '';
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -91,9 +89,12 @@ class _DashboardViewState extends State<DashboardView> {
 
   @override
   Widget build(BuildContext context) {
-    final doctorName = _session.doctorName.isNotEmpty ? _session.doctorName : 'Dr. Bhatra';
-    final waitingCount = _queueItems.isNotEmpty ? _queueItems.length : 3;
-    final todayCount = (_stats['totalPatientsAttended'] as num?)?.toInt() ?? 12;
+    final doctorName = _session.doctorName.isNotEmpty ? _session.doctorName : _session.vetName;
+    final waitingCount = _queueItems.length;
+    final todayCount = (_stats['totalAppointments'] as num?)?.toInt() ??
+        (_stats['totalPatientsAttended'] as num?)?.toInt() ??
+        (_stats['assignedCases'] as num?)?.toInt() ??
+        _appointments.length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -122,11 +123,11 @@ class _DashboardViewState extends State<DashboardView> {
                         ),
                       ),
 
-                    // Top App Header
+                    // Top App Header: Maharashtra Seal + Notification Bell & Profile Avatar
                     _buildTopHeader(context),
                     const SizedBox(height: 16),
 
-                    // Morning Hero Banner with Pastoral Artwork
+                    // Morning Hero Banner with Pastoral Artwork & Live Doctor Name
                     _buildHeroBanner(context, doctorName),
                     const SizedBox(height: 20),
 
@@ -134,15 +135,11 @@ class _DashboardViewState extends State<DashboardView> {
                     _buildStatCards(todayCount, waitingCount),
                     const SizedBox(height: 24),
 
-                    // Recent Messages Section
-                    _buildRecentMessagesSection(),
-                    const SizedBox(height: 24),
-
                     // Quick Actions Section
                     _buildQuickActionsSection(waitingCount),
                     const SizedBox(height: 24),
 
-                    // Currently Waiting Section
+                    // Currently Waiting Section (strictly connected to live backend queue)
                     _buildCurrentlyWaitingSection(),
                   ],
                 ),
@@ -163,7 +160,8 @@ class _DashboardViewState extends State<DashboardView> {
           width: 38,
           height: 38,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 32),
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 32),
         ),
         const SizedBox(width: 10),
         const Column(
@@ -199,33 +197,17 @@ class _DashboardViewState extends State<DashboardView> {
           ],
         ),
         const Spacer(),
-        // Notification Bell with Red Dot
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF1E293B), size: 26),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('All district alerts are synchronized.'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-            ),
-            Positioned(
-              right: 12,
-              top: 10,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEF4444),
-                  shape: BoxShape.circle,
-                ),
+        // Notification Bell with indicator
+        IconButton(
+          icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF1E293B), size: 26),
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('All animal husbandry district alerts are synchronized.'),
+                duration: Duration(seconds: 2),
               ),
-            ),
-          ],
+            );
+          },
         ),
         const SizedBox(width: 4),
         // Doctor Profile Avatar
@@ -270,7 +252,7 @@ class _DashboardViewState extends State<DashboardView> {
               errorBuilder: (context, error, stackTrace) => Container(color: const Color(0xFFE8F4F0)),
             ),
           ),
-          // Subtle soft white gradient overlay from left for text legibility
+          // Gradient overlay for text readability
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -278,11 +260,11 @@ class _DashboardViewState extends State<DashboardView> {
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    Colors.white.withValues(alpha: 0.92),
-                    Colors.white.withValues(alpha: 0.65),
+                    Colors.white.withValues(alpha: 0.94),
+                    Colors.white.withValues(alpha: 0.70),
                     Colors.transparent,
                   ],
-                  stops: const [0.0, 0.45, 1.0],
+                  stops: const [0.0, 0.48, 1.0],
                 ),
               ),
             ),
@@ -309,7 +291,7 @@ class _DashboardViewState extends State<DashboardView> {
                 Text(
                   doctorName,
                   style: const TextStyle(
-                    fontSize: 22,
+                    fontSize: 21,
                     fontWeight: FontWeight.w900,
                     color: Color(0xFF0F172A),
                     letterSpacing: -0.4,
@@ -349,7 +331,8 @@ class _DashboardViewState extends State<DashboardView> {
                       width: 22,
                       height: 22,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.people, size: 20, color: VetAppConstants.primaryTeal),
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.people, size: 20, color: VetAppConstants.primaryTeal),
                     ),
                     const SizedBox(width: 8),
                     const Flexible(
@@ -377,19 +360,13 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Row(
-                  children: [
-                    Icon(Icons.arrow_upward, size: 12, color: Color(0xFF16A34A)),
-                    SizedBox(width: 2),
-                    Text(
-                      '2 from yesterday',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF16A34A),
-                      ),
-                    ),
-                  ],
+                Text(
+                  todayCount > 0 ? 'Active in records' : 'No patients yet',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF16A34A),
+                  ),
                 ),
               ],
             ),
@@ -418,7 +395,8 @@ class _DashboardViewState extends State<DashboardView> {
                       width: 22,
                       height: 22,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.timer, size: 20, color: Color(0xFFEF4444)),
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.timer, size: 20, color: Color(0xFFEF4444)),
                     ),
                     const SizedBox(width: 8),
                     const Flexible(
@@ -446,12 +424,12 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'High urgency',
+                Text(
+                  waitingCount > 0 ? 'High urgency' : 'Queue cleared',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFFEF4444),
+                    color: waitingCount > 0 ? const Color(0xFFEF4444) : const Color(0xFF16A34A),
                   ),
                 ),
               ],
@@ -462,198 +440,7 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  // 4. Recent Messages Section
-  Widget _buildRecentMessagesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Recent Messages',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            InkWell(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Staff internal communication inbox.')),
-                );
-              },
-              child: const Text(
-                'View All',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: VetAppConstants.primaryTeal,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            // Message 1: Nurse Sarah
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x060F172A), blurRadius: 8, offset: Offset(0, 2)),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFD1F2EB),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'RN',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0B6057),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Nurse Sarah',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                              Text(
-                                '2m ago',
-                                style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'Patient in Room 4 is ready for consultation',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF64748B),
-                              height: 1.25,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            // Message 2: Mark Admin
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x060F172A), blurRadius: 8, offset: Offset(0, 2)),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFEF3C7),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'MA',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFB45309),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Mark Admin',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                              Text(
-                                '5m ago',
-                                style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 3),
-                          Text(
-                            'Updated report for the last session',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF64748B),
-                              height: 1.25,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.chevron_right, size: 16, color: Color(0xFFCBD5E1)),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // 5. Quick Actions Section
+  // 4. Quick Actions Section
   Widget _buildQuickActionsSection(int waitingCount) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,9 +454,9 @@ class _DashboardViewState extends State<DashboardView> {
           ),
         ),
         const SizedBox(height: 12),
-        // Primary Teal Button: View Queue (3)
+        // Primary Teal Button: View Queue
         InkWell(
-          onTap: () => widget.onNavigateToTab(1), // Switch to Queue tab
+          onTap: () => widget.onNavigateToTab(1),
           borderRadius: BorderRadius.circular(14),
           child: Container(
             width: double.infinity,
@@ -718,7 +505,7 @@ class _DashboardViewState extends State<DashboardView> {
         const SizedBox(height: 10),
         // White Card: Patient History
         InkWell(
-          onTap: () => widget.onNavigateToTab(2), // Switch to Patients tab
+          onTap: () => widget.onNavigateToTab(2),
           borderRadius: BorderRadius.circular(14),
           child: Container(
             width: double.infinity,
@@ -758,11 +545,7 @@ class _DashboardViewState extends State<DashboardView> {
         const SizedBox(height: 10),
         // White Card: Today's Schedule
         InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Today has 8 scheduled field visits and 4 telehealth calls.')),
-            );
-          },
+          onTap: () => widget.onNavigateToTab(1),
           borderRadius: BorderRadius.circular(14),
           child: Container(
             width: double.infinity,
@@ -785,9 +568,11 @@ class _DashboardViewState extends State<DashboardView> {
                   child: const Icon(Icons.calendar_today_rounded, size: 16, color: Color(0xFF10B981)),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  "Today's Schedule",
-                  style: TextStyle(
+                Text(
+                  _appointments.isNotEmpty
+                      ? "Today's Schedule (${_appointments.length} appointments)"
+                      : "Today's Schedule",
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF0F172A),
@@ -803,29 +588,8 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  // 6. Currently Waiting Section
+  // 5. Currently Waiting Section (Dynamic from backend)
   Widget _buildCurrentlyWaitingSection() {
-    final waitingList = _queueItems.isNotEmpty
-        ? _queueItems
-        : [
-            {
-              'name': 'Manish',
-              'age': '42y',
-              'tag': 'Video',
-              'issue': 'Fever & Cough',
-              'timer': '05:20',
-              'avatar': 'JD',
-            },
-            {
-              'name': 'Manya',
-              'age': '29y',
-              'tag': 'Kiosk',
-              'issue': 'Vaccination Checkup',
-              'timer': '12:45',
-              'avatar': 'MY',
-            },
-          ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -854,148 +618,168 @@ class _DashboardViewState extends State<DashboardView> {
           ],
         ),
         const SizedBox(height: 12),
-        for (final item in waitingList)
+        if (_queueItems.isEmpty)
           Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFFE2E8F0)),
-              boxShadow: const [
-                BoxShadow(color: Color(0x060F172A), blurRadius: 6, offset: Offset(0, 2)),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.check_circle_outline_rounded, size: 36, color: Color(0xFF10B981)),
+                SizedBox(height: 8),
+                Text(
+                  'No Patients Waiting',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'The patient triage queue is currently clear.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                ),
               ],
+            ),
+          )
+        else
+          for (final item in _queueItems)
+            _buildWaitingPatientCard(item),
+      ],
+    );
+  }
+
+  Widget _buildWaitingPatientCard(Map<String, dynamic> item) {
+    final name = (item['farmerName'] ?? item['patientName'] ?? item['name'] ?? 'Patient').toString();
+    final initials = name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'PT';
+    final issue = (item['reason'] ?? item['issue'] ?? item['symptoms'] ?? 'General Consultation').toString();
+    final channel = (item['channel'] ?? item['source'] ?? 'Video').toString();
+    final timeStr = (item['scheduledTime'] ?? item['timer'] ?? 'Waiting').toString();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x060F172A), blurRadius: 6, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(
+              color: Color(0xFFE2E8F0),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF334155),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0F2EF),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        channel,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: VetAppConstants.primaryTeal,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        issue,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
-                // Initials Avatar
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE2E8F0),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      item['avatar']?.toString() ??
-                          (item['farmerName']?.toString().isNotEmpty == true
-                              ? item['farmerName'].toString().substring(0, 1).toUpperCase()
-                              : 'PT'),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF334155),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Info Column
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            item['farmerName']?.toString() ?? item['name']?.toString() ?? 'Patient',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '(${item['age'] ?? 'Adult'})',
-                            style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE0F2EF),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              item['tag'] ?? 'Video',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: VetAppConstants.primaryTeal,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              item['issue'] ?? item['reason'] ?? 'General Consultation',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Timer badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.timer_outlined, size: 12, color: Color(0xFFD97706)),
-                      const SizedBox(width: 3),
-                      Text(
-                        item['timer'] ?? '05:20',
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFD97706),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Start Button
-                InkWell(
-                  onTap: () => _startConsultation(item),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Start',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF16A34A),
-                      ),
-                    ),
+                const Icon(Icons.timer_outlined, size: 12, color: Color(0xFFD97706)),
+                const SizedBox(width: 3),
+                Text(
+                  timeStr,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFD97706),
                   ),
                 ),
               ],
             ),
           ),
-      ],
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () => _startConsultation(item),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Start',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF16A34A),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

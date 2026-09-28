@@ -37,9 +37,19 @@ class _ConsultationsViewState extends State<ConsultationsView> {
   Future<void> _silentRefresh() async {
     if (!mounted) return;
     try {
-      final q = await _apiService.getVetQueue();
+      final results = await Future.wait([
+        _apiService.getVetQueue(),
+        _apiService.getAppointments(),
+      ]);
+      final q = results[0];
+      final apts = results[1];
+      final existingIds = q.map((e) => (e['_id'] ?? e['id'])?.toString()).toSet();
+      final merged = <Map<String, dynamic>>[
+        ...q,
+        ...apts.where((a) => !existingIds.contains((a['_id'] ?? a['id'])?.toString())),
+      ];
       if (mounted) {
-        setState(() => _queueList = q);
+        setState(() => _queueList = merged);
       }
     } catch (_) {}
   }
@@ -47,10 +57,20 @@ class _ConsultationsViewState extends State<ConsultationsView> {
   Future<void> _loadQueueData() async {
     setState(() => _isLoading = true);
     try {
-      final q = await _apiService.getVetQueue();
+      final results = await Future.wait([
+        _apiService.getVetQueue(),
+        _apiService.getAppointments(),
+      ]);
+      final q = results[0];
+      final apts = results[1];
+      final existingIds = q.map((e) => (e['_id'] ?? e['id'])?.toString()).toSet();
+      final merged = <Map<String, dynamic>>[
+        ...q,
+        ...apts.where((a) => !existingIds.contains((a['_id'] ?? a['id'])?.toString())),
+      ];
       if (mounted) {
         setState(() {
-          _queueList = q;
+          _queueList = merged;
           _isLoading = false;
         });
       }
@@ -79,105 +99,32 @@ class _ConsultationsViewState extends State<ConsultationsView> {
     }
   }
 
-  // Fallback mock patients matching the exact UI mockup if queue is empty
+  // Dynamic patient mapping directly from backend queue & appointments
   List<Map<String, dynamic>> _getMergedPatients() {
-    final defaultPatients = [
-      {
-        'id': 'p1',
-        'name': 'Sarah Jenkins',
-        'source': 'Patient App',
-        'sourceType': 'app',
-        'badge': 'New Patient',
-        'complaint': 'Sore throat, fever',
-        'timer': '01:45',
-        'timerUrgent': true,
-        'temperature': '101.2°F',
-        'bp': '128/82',
-        'avatar': 'SJ',
-        'age': '68',
-        'gender': 'Female',
-      },
-      {
-        'id': 'p2',
-        'name': 'Robert Chen',
-        'source': 'Kiosk - Main Lobby',
-        'sourceType': 'kiosk',
-        'badge': 'Follow-up',
-        'complaint': 'Prescription renewal',
-        'timer': '04:20',
-        'timerUrgent': false,
-        'temperature': '98.6°F',
-        'bp': '115/75',
-        'avatar': 'RC',
-        'age': '54',
-        'gender': 'Male',
-      },
-      {
-        'id': 'p3',
-        'name': 'Maria Kowalski',
-        'source': 'Patient App',
-        'sourceType': 'app',
-        'badge': 'New Patient',
-        'complaint': 'General checkup',
-        'timer': '08:15',
-        'timerUrgent': false,
-        'temperature': '98.4°F',
-        'bp': '120/80',
-        'avatar': 'MK',
-        'age': '32',
-        'gender': 'Female',
-      },
-      {
-        'id': 'p4',
-        'name': 'Eleanor Vance',
-        'source': 'Patient App',
-        'sourceType': 'app',
-        'badge': 'Follow-up',
-        'complaint': 'Hypertension evaluation',
-        'timer': '12:45',
-        'timerUrgent': false,
-        'temperature': '99.1°F',
-        'bp': '135/88',
-        'avatar': 'EV',
-        'age': '68',
-        'gender': 'Female',
-      },
-      {
-        'id': 'p5',
-        'name': 'Dnyaneshwar Gaikwad',
-        'source': 'Kiosk - Taluka Center',
-        'sourceType': 'kiosk',
-        'badge': 'Emergency',
-        'complaint': 'Acute mastitis in Murrah Buffalo',
-        'timer': '15:20',
-        'timerUrgent': false,
-        'temperature': '103.4°F',
-        'bp': '140/90',
-        'avatar': 'DG',
-        'age': '48',
-        'gender': 'Male',
-      },
-    ];
+    if (_queueList.isEmpty) return [];
 
-    if (_queueList.isEmpty) return defaultPatients;
-
-    // Convert dynamic API appointments to queue card structure
     return _queueList.map((q) {
-      final name = q['farmerName'] ?? q['patientName'] ?? q['name'] ?? 'Patient';
-      final src = q['source'] ?? (q['channel'] == 'kiosk' ? 'Kiosk - Center' : 'Patient App');
-      final isKiosk = src.toString().toLowerCase().contains('kiosk');
+      final name = (q['farmerName'] ?? q['patientName'] ?? q['name'] ?? 'Patient').toString();
+      final src = (q['source'] ?? (q['channel'] == 'kiosk' ? 'Kiosk - Center' : 'Patient App')).toString();
+      final isKiosk = src.toLowerCase().contains('kiosk');
+      final temp = q['temperature'] != null ? '${q['temperature']}°F' : (q['temp'] != null ? '${q['temp']}°F' : 'Normal');
+      final bp = q['bp']?.toString() ?? 'Normal';
+      final status = (q['status'] ?? '').toString().toLowerCase();
+      final priority = (q['priority'] ?? '').toString();
+      final isUrgent = status == 'urgent' || priority == 'Emergency' || priority == 'High Priority';
+
       return {
         ...q,
         'name': name,
         'source': src,
         'sourceType': isKiosk ? 'kiosk' : 'app',
-        'badge': q['badge'] ?? (q['status'] == 'urgent' ? 'Emergency' : 'Follow-up'),
-        'complaint': q['reason'] ?? q['complaint'] ?? 'General Consultation',
-        'timer': q['timer'] ?? '03:10',
-        'timerUrgent': q['timerUrgent'] ?? false,
-        'temperature': q['temperature'] ?? '101.0°F',
-        'bp': q['bp'] ?? '120/80',
-        'avatar': name.toString().isNotEmpty ? name.toString().substring(0, 1).toUpperCase() : 'P',
+        'badge': q['badge'] ?? (isUrgent ? 'Emergency' : (q['isFollowUp'] == true ? 'Follow-up' : 'New Patient')),
+        'complaint': q['reason'] ?? q['complaint'] ?? q['symptoms']?.toString() ?? 'General Consultation',
+        'timer': q['timer'] ?? (q['scheduledTime']?.toString() ?? 'In Queue'),
+        'timerUrgent': q['timerUrgent'] ?? isUrgent,
+        'temperature': temp,
+        'bp': bp,
+        'avatar': name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'P',
       };
     }).toList();
   }
