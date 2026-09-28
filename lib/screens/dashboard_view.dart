@@ -155,6 +155,22 @@ class _DashboardViewState extends State<DashboardView> {
   Widget _buildTopHeader(BuildContext context) {
     return Row(
       children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/app_logo.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
         Image.asset(
           'assets/images/national_emblem.png',
           width: 38,

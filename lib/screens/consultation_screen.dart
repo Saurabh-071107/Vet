@@ -323,6 +323,22 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       titleSpacing: 0,
       title: Row(
         children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           Image.asset(
             'assets/images/national_emblem.png',
             width: 32,

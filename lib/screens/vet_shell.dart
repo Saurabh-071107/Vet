@@ -85,6 +85,22 @@ class _VetShellState extends State<VetShell> {
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Row(
               children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/app_logo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Image.asset(
                   'assets/images/national_emblem.png',
                   width: 36,
