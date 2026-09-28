@@ -292,7 +292,7 @@ class _ConsultationsViewState extends State<ConsultationsView> {
           width: 34,
           height: 34,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 28),
+          errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 28),
         ),
         const SizedBox(width: 8),
         const Column(

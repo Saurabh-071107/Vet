@@ -30,7 +30,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   // Call & Device State
   bool _isMicMuted = false;
   bool _isVideoOff = false;
-  bool _isFrontCamera = true;
+  final bool _isFrontCamera = true;
   int _callDurationSeconds = 765; // Initialized around 12:45 to match mockup
   Timer? _callTimer;
   Timer? _streamSyncTimer;
@@ -176,6 +176,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
   }
 
   void _showEPrescribeModal() {
+    final messenger = ScaffoldMessenger.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -233,6 +234,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                       onPressed: _isSubmitting
                           ? null
                           : () async {
+                              final nav = Navigator.of(ctx);
                               setState(() => _isSubmitting = true);
                               try {
                                 await _apiService.recordExamination(
@@ -249,8 +251,8 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                                   status: 'prescribed',
                                 );
                                 if (mounted) {
-                                  Navigator.pop(ctx);
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  nav.pop();
+                                  messenger.showSnackBar(
                                     const SnackBar(content: Text('E-Prescription sent to Patient App.')),
                                   );
                                 }
@@ -329,7 +331,7 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
             width: 32,
             height: 32,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 26),
+            errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 26),
           ),
           const SizedBox(width: 8),
           const Text(
@@ -439,10 +441,32 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
               base64Decode(_peerFrameBase64!),
               fit: BoxFit.cover,
               gaplessPlayback: true,
-              errorBuilder: (_, __, ___) => _buildSimulatedPatient(),
+              errorBuilder: (context, error, stackTrace) => _buildSimulatedPatient(),
             )
           else
             _buildSimulatedPatient(),
+
+          // Audio muted indicator if remote peer is muted
+          if (_peerMuted)
+            Positioned(
+              top: 12,
+              left: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.mic_off_rounded, color: Color(0xFFEF4444), size: 14),
+                    SizedBox(width: 4),
+                    Text('Muted', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
 
           // Top Right: Doctor Picture-In-Picture (PIP)
           Positioned(

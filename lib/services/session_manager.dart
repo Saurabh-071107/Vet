@@ -30,6 +30,7 @@ class SessionManager extends ChangeNotifier {
   String? get token => _token;
   String get vetId => _vetId;
   String get vetName => _vetName;
+  String get doctorName => _vetName;
   String? get profilePhotoUrl => _profilePhotoUrl;
   String get designation => _designation;
   String get email => _email;

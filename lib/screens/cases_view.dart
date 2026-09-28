@@ -231,7 +231,7 @@ class _CasesViewState extends State<CasesView> {
               width: 32,
               height: 32,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 26),
+              errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 26),
             ),
             const SizedBox(width: 8),
             const Column(

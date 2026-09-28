@@ -90,7 +90,7 @@ class _VetShellState extends State<VetShell> {
                   width: 36,
                   height: 36,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 28),
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 28),
                 ),
                 const SizedBox(width: 10),
                 const Expanded(

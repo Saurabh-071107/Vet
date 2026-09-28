@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/constants.dart';
 import '../models/vet_case_model.dart';
 import '../services/vet_api_service.dart';
 
@@ -423,7 +424,7 @@ class CaseCard extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF0D9488), VetAppConstants.primaryTeal],
+          colors: [Color(0xFF0D9488), Color(0xFF0B6057)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

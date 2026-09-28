@@ -112,6 +112,16 @@ class _DashboardViewState extends State<DashboardView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: LinearProgressIndicator(
+                          minHeight: 2.5,
+                          backgroundColor: Color(0xFFE2E8F0),
+                          valueColor: AlwaysStoppedAnimation<Color>(VetAppConstants.primaryTeal),
+                        ),
+                      ),
+
                     // Top App Header
                     _buildTopHeader(context),
                     const SizedBox(height: 16),
@@ -153,7 +163,7 @@ class _DashboardViewState extends State<DashboardView> {
           width: 38,
           height: 38,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 32),
+          errorBuilder: (context, error, stackTrace) => const Icon(Icons.account_balance, color: VetAppConstants.primaryTeal, size: 32),
         ),
         const SizedBox(width: 10),
         const Column(
@@ -257,7 +267,7 @@ class _DashboardViewState extends State<DashboardView> {
               'assets/images/vet_dashboard_banner.png',
               fit: BoxFit.cover,
               alignment: Alignment.centerRight,
-              errorBuilder: (_, __, ___) => Container(color: const Color(0xFFE8F4F0)),
+              errorBuilder: (context, error, stackTrace) => Container(color: const Color(0xFFE8F4F0)),
             ),
           ),
           // Subtle soft white gradient overlay from left for text legibility
@@ -339,7 +349,7 @@ class _DashboardViewState extends State<DashboardView> {
                       width: 22,
                       height: 22,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.people, size: 20, color: VetAppConstants.primaryTeal),
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.people, size: 20, color: VetAppConstants.primaryTeal),
                     ),
                     const SizedBox(width: 8),
                     const Flexible(
@@ -408,7 +418,7 @@ class _DashboardViewState extends State<DashboardView> {
                       width: 22,
                       height: 22,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.timer, size: 20, color: Color(0xFFEF4444)),
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.timer, size: 20, color: Color(0xFFEF4444)),
                     ),
                     const SizedBox(width: 8),
                     const Flexible(
