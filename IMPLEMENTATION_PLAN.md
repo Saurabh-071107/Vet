@@ -6,7 +6,7 @@ Redesign the Flutter Veterinarian Application (`Vet`) to match the new 3-screen 
 ## Mockup Specifications
 1. **Screen 1: Home / Dashboard**
    - Government of Maharashtra emblem + dual-language branding.
-   - Header with notification bell (red dot) and doctor profile avatar.
+   - Header with notification bell (red unread dot) and doctor profile avatar.
    - Morning pastoral hero banner (`vet_dashboard_banner.png`) with "Good Morning, Dr. Bhatra".
    - 2-Column KPI Stat Cards:
      - Today's Patients (`12`, `↑ 2 from yesterday`, `icon_todays_patients.png`).
@@ -33,12 +33,15 @@ Redesign the Flutter Veterinarian Application (`Vet`) to match the new 3-screen 
    - Consultation Notes card: Textarea, `Save Notes` action, `E-Prescribe` & `Schedule Follow-up` dual action buttons.
    - Recent Reports card: `Blood Panel`, `Chest X-Ray`, and `Upload Document` button.
 
-## Task List
-- [ ] Task 1: Update design tokens and brand colors in `Vet/lib/core/constants.dart` (Deep Teal `0xFF0B6057`, soft teal, gold, amber, badge colors).
-- [ ] Task 2: Redesign `Vet/lib/screens/dashboard_view.dart` (Screen 1 - Hero banner, stats cards with assets, recent messages, quick actions, waiting queue preview).
-- [ ] Task 3: Redesign `Vet/lib/screens/consultations_view.dart` (Screen 2 - Waiting Queue, 2h wait time trend histogram, filter pills, patient queue cards with vitals and Accept Call).
-- [ ] Task 4: Redesign `Vet/lib/screens/consultation_screen.dart` (Screen 3 - Telehealth Pro, video viewport with PIP & floating controls, vitals, medical history, notes, reports).
-- [ ] Task 5: Redesign `Vet/lib/screens/vet_shell.dart` (Active teal pill bottom navigation for Home, Queue, Patients, Profile + responsive navigation rail).
-- [ ] Task 6: Align `Vet/lib/screens/cases_view.dart` styling for the Patients tab.
-- [ ] Task 7: Run Dart static analysis to verify 0 errors across `Vet/lib/`.
-- [ ] Task 8: Initialize git repo in `Vet/`, commit changes, and push to GitHub.
+## Task List & Execution Status
+- [x] **Task 1:** Update design tokens and brand colors in `Vet/lib/core/constants.dart` (Deep Teal `0xFF0B6057`, soft teal pill `0xFFE0F2EF`, gold/amber badges).
+- [x] **Task 2:** Redesign `Vet/lib/screens/dashboard_view.dart` (Screen 1 - Hero banner with `vet_dashboard_banner.png`, stats cards with `icon_todays_patients.png` and `icon_patients_waiting.png`, recent messages, quick actions, waiting queue preview with Start action).
+- [x] **Task 3:** Redesign `Vet/lib/screens/consultations_view.dart` (Screen 2 - Waiting Queue, 2h wait time trend histogram, filter pills: All/Kiosk/Patient App, patient queue cards with vitals and Accept Call action).
+- [x] **Task 4:** Redesign `Vet/lib/screens/consultation_screen.dart` (Screen 3 - Telehealth Pro, video viewport with doctor PIP & floating controls, vitals card, medical history chips, consultation notes + e-prescribe, and recent reports).
+- [x] **Task 5:** Redesign `Vet/lib/screens/vet_shell.dart` (Active teal pill bottom navigation for Home, Queue, Patients, Profile + responsive navigation rail).
+- [x] **Task 6:** Align `Vet/lib/screens/cases_view.dart` styling for the Patients tab.
+- [x] **Task 7:** Run Dart static analysis to verify 0 errors across `Vet/lib/`.
+- [x] **Task 8:** Initialize git repo in `Vet/`, commit changes, and push to GitHub repository `https://github.com/Saurabh-071107/Vet.git`.
+
+## Static Analysis Verification
+- `analyze_files` executed via `dart-mcp-server` across `Vet/lib/`: **0 errors**.
